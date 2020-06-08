@@ -3046,12 +3046,17 @@ class Product extends JobImport
             $columnIdentifier => '_entity_id',
             'sku'             => 'identifier',
         ];
+        $warnMsgs = [];
         foreach ($gallery as $image) {
             if (!$connection->tableColumnExists($tmpTable, strtolower($image))) {
                 $this->setMessage(__('Info: No value found in the current batch for the attribute %1', $image), $this->logger);
-                continue;
+                $warnMsgs[] = $image;
+				continue;
             }
             $data[$image] = strtolower($image);
+        }
+        if(count($warnMsgs) > 0){
+            $this->setMessage(__('Warning: %1 attribute does not exist', implode(',',$warnMsgs)));
         }
 
         /** @var bool $rowIdExists */

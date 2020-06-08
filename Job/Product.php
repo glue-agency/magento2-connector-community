@@ -2398,6 +2398,16 @@ class Product extends JobImport
         $tmpTable = $this->entitiesHelper->getTableName($this->getCode());
         /** @var array $gallery */
         $gallery = $this->configHelper->getMediaImportGalleryColumns();
+        $websiteMapping = $this->configHelper->getWebsiteMapping();
+        $websiteCodes = array_column($websiteMapping,'website');
+
+        $newGallery = [];
+        foreach($gallery as $galleryItem){
+            foreach($websiteCodes as $webCode){
+                $newGallery[] = $galleryItem.'-'.$webCode;
+            }
+        }
+        $gallery = $newGallery;
 
         if (empty($gallery)) {
             $this->setStatus(false);

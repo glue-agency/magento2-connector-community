@@ -2416,12 +2416,16 @@ class Product extends JobImport
             $columnIdentifier => '_entity_id',
             'sku'             => 'identifier',
         ];
+        $warnMsgs = [];
         foreach ($gallery as $image) {
             if (!$connection->tableColumnExists($tmpTable, $image)) {
-                $this->setMessage(__('Warning: %1 attribute does not exist', $image));
+                $warnMsgs[] = $image;
                 continue;
             }
             $data[$image] = $image;
+        }
+        if(count($warnMsgs) > 0){
+            $this->setMessage(__('Warning: %1 attribute does not exist', implode(',',$warnMsgs)));
         }
 
         /** @var bool $rowIdExists */

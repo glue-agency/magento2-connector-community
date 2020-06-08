@@ -455,6 +455,8 @@ class Product extends JobImport
         }
 
         /** @var mixed[] $filter */
+        $connection = $this->entitiesHelper->getConnection();
+        $tmpTable = $this->entitiesHelper->getTableName($this->getCode());
         foreach ($filters as $filter) {
             /** @var ResourceCursorInterface $products */
             $products = $this->akeneoClient->getProductApi()->all($paginationSize, $filter);

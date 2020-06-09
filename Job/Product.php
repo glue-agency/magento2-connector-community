@@ -378,6 +378,10 @@ class Product extends JobImport
         /** @var string[] $attributeMetrics */
         $attributeMetrics = $this->attributeMetrics->getMetricsAttributes();
         /** @var mixed[] $filter */
+        $connection = $this->entitiesHelper->getConnection();
+        $tmpTable = $this->entitiesHelper->getTableName($this->getCode());
+        $galleryCols = $this->configHelper->getMediaImportGalleryColumns();
+        $updatedSkus = [];
         foreach ($filters as $filter) {
             /** @var ResourceCursorInterface $products */
             $products = $this->akeneoClient->getProductApi()->all($paginationSize, $filter);
@@ -386,6 +390,33 @@ class Product extends JobImport
              * @var mixed[] $product
              */
             foreach ($products as $product) {
+
+                //insert image columns in the tmp table
+                foreach($galleryCols as $galleryCol){
+
+                    if(!array_key_exists($galleryCol,$product['values'])){
+                        continue;
+                    }
+
+                    $scope = $product['values'][$galleryCol][0]['scope'];
+                    if (!$connection->tableColumnExists($tmpTable, $galleryCol.'-' . $scope)) {
+                        $connection->addColumn(
+                            $tmpTable,
+                            $galleryCol.'-' . $scope,
+                            [
+                                'type'     => 'text',
+                                'length'   => 255,
+                                'default'  => '',
+                                'COMMENT'  => ' ',
+                                'nullable' => true,
+                            ]
+                        );
+                    }
+
+                    $imgData =  $product['values'][$galleryCol][0]['data'];
+                    $connection->update($tmpTable, [$galleryCol.'-' . $scope => $imgData], ['identifier = ?' => $product['identifier']]);
+                }
+
                 /**
                  * @var string $attributeMetric
                  */
@@ -439,6 +470,7 @@ class Product extends JobImport
                     return;
                 }
 
+                $updatedSkus[] = $product['identifier'].'-'.$filter['scope'];
                 $index++;
             }
         }
@@ -485,7 +517,7 @@ class Product extends JobImport
             return;
         }
 
-        $this->setMessage(__('%1 line(s) found', $index));
+        $this->setMessage(__('%1 line(s) found: %2', $index, implode(',',$updatedSkus)));
     }
 
     /**
@@ -2398,6 +2430,16 @@ class Product extends JobImport
         $tmpTable = $this->entitiesHelper->getTableName($this->getCode());
         /** @var array $gallery */
         $gallery = $this->configHelper->getMediaImportGalleryColumns();
+        $websiteMapping = $this->configHelper->getWebsiteMapping();
+        $websiteCodes = array_column($websiteMapping,'website');
+
+        $newGallery = [];
+        foreach($gallery as $galleryItem){
+            foreach($websiteCodes as $webCode){
+                $newGallery[] = $galleryItem.'-'.$webCode;
+            }
+        }
+        $gallery = $newGallery;
 
         if (empty($gallery)) {
             $this->setStatus(false);
@@ -2416,12 +2458,16 @@ class Product extends JobImport
             $columnIdentifier => '_entity_id',
             'sku'             => 'identifier',
         ];
+        $warnMsgs = [];
         foreach ($gallery as $image) {
             if (!$connection->tableColumnExists($tmpTable, $image)) {
-                $this->setMessage(__('Warning: %1 attribute does not exist', $image));
+                $warnMsgs[] = $image;
                 continue;
             }
             $data[$image] = $image;
+        }
+        if(count($warnMsgs) > 0){
+            $this->setMessage(__('Warning: %1 attribute does not exist', implode(',',$warnMsgs)));
         }
 
         /** @var bool $rowIdExists */

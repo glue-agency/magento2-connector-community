@@ -380,6 +380,7 @@ class Product extends JobImport
         /** @var mixed[] $filter */
         $connection = $this->entitiesHelper->getConnection();
         $tmpTable = $this->entitiesHelper->getTableName($this->getCode());
+        $galleryCols = $this->configHelper->getMediaImportGalleryColumns();
         foreach ($filters as $filter) {
             /** @var ResourceCursorInterface $products */
             $products = $this->akeneoClient->getProductApi()->all($paginationSize, $filter);
@@ -388,6 +389,33 @@ class Product extends JobImport
              * @var mixed[] $product
              */
             foreach ($products as $product) {
+
+                //insert image columns in the tmp table
+                foreach($galleryCols as $galleryCol){
+
+                    if(!array_key_exists($galleryCol,$product['values'])){
+                        continue;
+                    }
+
+                    $scope = $product['values'][$galleryCol][0]['scope'];
+                    if (!$connection->tableColumnExists($tmpTable, $galleryCol.'-' . $scope)) {
+                        $connection->addColumn(
+                            $tmpTable,
+                            $galleryCol.'-' . $scope,
+                            [
+                                'type'     => 'text',
+                                'length'   => 255,
+                                'default'  => '',
+                                'COMMENT'  => ' ',
+                                'nullable' => true,
+                            ]
+                        );
+                    }
+
+                    $imgData =  $product['values'][$galleryCol][0]['data'];
+                    $connection->update($tmpTable, [$galleryCol.'-' . $scope => $imgData], ['identifier = ?' => $product['identifier']]);
+                }
+
                 /**
                  * @var string $attributeMetric
                  */

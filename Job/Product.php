@@ -381,6 +381,7 @@ class Product extends JobImport
         $connection = $this->entitiesHelper->getConnection();
         $tmpTable = $this->entitiesHelper->getTableName($this->getCode());
         $galleryCols = $this->configHelper->getMediaImportGalleryColumns();
+        $updatedSkus = [];
         foreach ($filters as $filter) {
             /** @var ResourceCursorInterface $products */
             $products = $this->akeneoClient->getProductApi()->all($paginationSize, $filter);
@@ -469,6 +470,7 @@ class Product extends JobImport
                     return;
                 }
 
+                $updatedSkus[] = $product['identifier'].'-'.$filter['scope'];
                 $index++;
             }
         }
@@ -515,7 +517,7 @@ class Product extends JobImport
             return;
         }
 
-        $this->setMessage(__('%1 line(s) found', $index));
+        $this->setMessage(__('%1 line(s) found: %2', $index, implode(',',$updatedSkus)));
     }
 
     /**

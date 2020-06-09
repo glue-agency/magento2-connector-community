@@ -1,5 +1,5 @@
 {
-  "name": "glue-agency/module-magento2-connector-community",
+  "name": "akeneo/module-magento2-connector-community",
   "description": "Akeneo connector for Magento 2",
   "require": {
     "magento/framework": ">=100.0.1",

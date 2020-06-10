@@ -3132,6 +3132,7 @@ class Product extends JobImport
         array_walk($stores, function (&$val, $key){
             $val = $val[0]['store_code'];
         });
+        $galleryValueTable = $this->entitiesHelper->getTable('catalog_product_entity_media_gallery_value');
 
         /** @var array $row */
         while (($row = $query->fetch())) {

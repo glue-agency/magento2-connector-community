@@ -2557,6 +2557,17 @@ class Product extends JobImport
                 /** @var array $columns */
                 $columns = $this->configHelper->getMediaImportImagesColumns();
 
+                $newColumns = [];
+                foreach($columns as $columnItem){
+                    foreach($websiteCodes as $webCode){
+                        $newColumns[] = [
+                            'attribute' => $columnItem['attribute'],
+                            'column' => $columnItem['column'].'-'.$webCode,
+                        ];
+                    }
+                }
+                $columns = $newColumns;
+
                 foreach ($columns as $column) {
                     if ($column['column'] !== $image) {
                         continue;

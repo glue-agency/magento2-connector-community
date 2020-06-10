@@ -2495,6 +2495,11 @@ class Product extends JobImport
         /** @var string $productImageTable */
         $productImageTable = $this->entitiesHelper->getTable('catalog_product_entity_varchar');
 
+        $stores = $this->storeHelper->getStores('store_id');
+        array_walk($stores, function (&$val, $key){
+            $val = $val[0]['store_code'];
+        });
+
         /** @var array $row */
         while (($row = $query->fetch())) {
             /** @var array $files */
@@ -2572,14 +2577,19 @@ class Product extends JobImport
                     if ($column['column'] !== $image) {
                         continue;
                     }
-                    /** @var array $data */
-                    $data = [
-                        'attribute_id'    => $column['attribute'],
-                        'store_id'        => 0,
-                        $columnIdentifier => $row[$columnIdentifier],
-                        'value'           => $file,
-                    ];
-                    $connection->insertOnDuplicate($productImageTable, $data, array_keys($data));
+
+                    foreach($stores as $store_id => $store_view_key){
+                        if(explode('_',$store_view_key)[0] == explode('-',$column['column'])[1]){
+                            /** @var array $data */
+                            $data = [
+                                'attribute_id'    => $column['attribute'],
+                                'store_id'        => $store_id,
+                                $columnIdentifier => $row[$columnIdentifier],
+                                'value'           => $file,
+                            ];
+                            $connection->insertOnDuplicate($productImageTable, $data, array_keys($data));
+                        }
+                    }
                 }
 
                 $files[] = $file;

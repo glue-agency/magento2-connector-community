@@ -2553,6 +2553,34 @@ class Product extends JobImport
                 ];
                 $connection->insertOnDuplicate($galleryTable, $data, array_keys($data));
 
+                foreach ($stores as $store_id => $store_view_key) {
+                    /** @var array $data */
+                    $data = [
+                        'value_id' => $valueId,
+                        'store_id' => $store_id,
+                        'entity_id' => $row[$columnIdentifier],
+                        'disabled' => 1,
+                    ];
+
+                    if (explode('_', $store_view_key)[0] == explode('-', $image)[1]) {
+                        $data['disabled'] = 0;
+                    }
+
+                    $hasData = (bool)$connection->fetchOne(
+                        $connection->select()
+                            ->from($galleryValueTable, [new Expr(1)])
+                            ->where('value_id = ?', $data['value_id'])
+                            ->where('store_id = ?', $data['store_id'])
+                            ->where('entity_id = ?', $data['entity_id'])
+                            ->where('disabled = ?', $data['disabled'])
+                            ->limit(1)
+                    );
+                    if(!$hasData){
+                        $connection->insertOnDuplicate($galleryValueTable,
+                            $data, array_keys($data));
+                    }
+                }
+
                 /** @var array $data */
                 $data = [
                     'value_id'        => $valueId,

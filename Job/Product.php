@@ -11,8 +11,8 @@ use Akeneo\Connector\Helper\Output as OutputHelper;
 use Akeneo\Connector\Helper\ProductFilters;
 use Akeneo\Connector\Helper\Serializer as JsonSerializer;
 use Akeneo\Connector\Helper\Store as StoreHelper;
-use Akeneo\Connector\Job\Option as JobOption;
 use Akeneo\Connector\Job\Import as JobImport;
+use Akeneo\Connector\Job\Option as JobOption;
 use Akeneo\Connector\Model\Source\Attribute\Metrics as AttributeMetrics;
 use Akeneo\Connector\Model\Source\Filters\Mode;
 use Akeneo\Pim\ApiClient\Pagination\PageInterface;
@@ -338,12 +338,18 @@ class Product extends JobImport
 
         /** @var mixed[] $filters */
         $filters = $this->getFilters($this->getFamily());
-        $filters = reset($filters);
-        /** @var PageInterface $products */
-        $products = $this->akeneoClient->getProductApi()->listPerPage(1, false, $filters);
-        /** @var mixed[] $products */
-        $products = $products->getItems();
-        $product  = reset($products);
+
+        foreach ($filters as $filter) {
+            /** @var PageInterface $products */
+            $products = $this->akeneoClient->getProductApi()->listPerPage(1, false, $filter);
+            /** @var mixed[] $products */
+            $products = $products->getItems();
+
+            if (!empty($products)) {
+                break;
+            }
+        }
+
         if (empty($products)) {
             $this->setMessage(__('No results from Akeneo for the family: %1', $this->getFamily()));
             $this->stop(true);
@@ -351,6 +357,7 @@ class Product extends JobImport
             return;
         }
 
+        $product = reset($products);
         $this->entitiesHelper->createTmpTableFromApi($product, $this->getCode());
 
         /** @var string $message */
@@ -366,7 +373,7 @@ class Product extends JobImport
     public function insertData()
     {
         /** @var string|int $paginationSize */
-        $paginationSize = $this->configHelper->getPanigationSize();
+        $paginationSize = $this->configHelper->getPaginationSize();
         /** @var int $index */
         $index = 0;
         /** @var mixed[] $filters */
@@ -527,8 +534,10 @@ class Product extends JobImport
      */
     public function getMetricsSymbols()
     {
+        /** @var string|int $paginationSize */
+        $paginationSize = $this->configHelper->getPaginationSize();
         /** @var mixed[] $measures */
-        $measures = $this->akeneoClient->getMeasureFamilyApi()->all();
+        $measures = $this->akeneoClient->getMeasureFamilyApi()->all($paginationSize);
         /** @var string[] $metricsSymbols */
         $metricsSymbols = [];
         /** @var mixed[] $measure */
@@ -887,7 +896,7 @@ class Product extends JobImport
             }
 
             /** @var string $name */
-            $name = $attribute['attribute'];
+            $name = strtolower($attribute['attribute']);
             /** @var string $value */
             $value = $attribute['value'];
             /** @var string $type */
@@ -1203,8 +1212,6 @@ class Product extends JobImport
             'attribute_set_id' => '_attribute_set_id',
             'type_id'          => '_type_id',
             'sku'              => 'identifier',
-            'has_options'      => new Expr(0),
-            'required_options' => new Expr(0),
             'updated_at'       => new Expr('now()'),
         ];
 
@@ -1749,6 +1756,7 @@ class Product extends JobImport
         /** @var string $websiteAttribute */
         $websiteAttribute = $this->configHelper->getWebsiteAttribute();
         if ($websiteAttribute != null) {
+            $websiteAttribute = strtolower($websiteAttribute);
             $attribute = $this->eavConfig->getAttribute('catalog_product', $websiteAttribute);
             if ($attribute->getAttributeId() != null) {
                 /** @var string[] $options */
@@ -2111,9 +2119,8 @@ class Product extends JobImport
             $connection->delete(
                 $linkTable,
                 [
-                    '(product_id, linked_product_id, link_type_id) NOT IN (?)' => $select,
-                    'link_type_id = ?'                                         => $typeId,
-                    'product_id IN (?)'                                        => $productIds,
+                    'link_type_id = ?' => $typeId,
+                    'product_id IN (?)' => $productIds
                 ]
             );
 
@@ -2347,11 +2354,23 @@ class Product extends JobImport
                         );
 
                         if ($rewriteId) {
-                            $connection->update(
-                                $this->entitiesHelper->getTable('url_rewrite'),
-                                ['request_path' => $requestPath, 'metadata' => $metadata],
-                                ['url_rewrite_id = ?' => $rewriteId]
-                            );
+                            try {
+                                $connection->update(
+                                    $this->entitiesHelper->getTable('url_rewrite'),
+                                    ['request_path' => $requestPath, 'metadata' => $metadata],
+                                    ['url_rewrite_id = ?' => $rewriteId]
+                                );
+                            } catch (\Exception $e) {
+                                $this->setAdditionalMessage(
+                                    __(
+                                        sprintf(
+                                            'Tried to update url_rewrite_id %s : request path (%s) already exists for the store_id.',
+                                            $rewriteId,
+                                            $requestPath
+                                        )
+                                    )
+                                );
+                            }
                         } else {
                             /** @var array $data */
                             $data = [
@@ -2696,11 +2715,16 @@ class Product extends JobImport
     {
         if (!$this->akeneoClient) {
             $this->akeneoClient = $this->getAkeneoClient();
+            if (!$this->akeneoClient) {
+                return [];
+            }
         }
+        /** @var string|int $paginationSize */
+        $paginationSize = $this->configHelper->getPaginationSize();
         /** @var string[] $families */
         $families = [];
         /** @var string[] $apiFamilies */
-        $apiFamilies = $this->akeneoClient->getFamilyApi()->all();
+        $apiFamilies = $this->akeneoClient->getFamilyApi()->all($paginationSize);
         /** @var mixed[] $family */
         foreach ($apiFamilies as $family) {
             if (!isset($family['code'])) {
@@ -2712,12 +2736,12 @@ class Product extends JobImport
         $mode = $this->configHelper->getFilterMode();
         if ($mode == Mode::ADVANCED) {
             /** @var string[] $filters */
-            $filters = $this->configHelper->getAdvancedFilters();
+            $advancedFilters = $this->configHelper->getAdvancedFilters();
             if (isset($advancedFilters['search']['family'])) {
                 foreach ($advancedFilters['search']['family'] as $key => $familyFilter) {
                     if (isset($familyFilter['operator']) && $familyFilter['operator'] == 'NOT IN') {
                         foreach ($familyFilter['value'] as $familyToRemove) {
-                            if (($familyKey = array_search($familyFilter, $families)) !== false) {
+                            if (($familyKey = array_search($familyToRemove, $families)) !== false) {
                                 unset($families[$familyKey]);
                             }
                         }

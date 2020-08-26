@@ -119,18 +119,26 @@ class ProductModel extends Import
     {
         /** @var mixed[] $filters */
         $filters = $this->getFilters();
-        $filters = reset($filters);
-        /** @var PageInterface $productModels */
-        $productModels = $this->akeneoClient->getProductModelApi()->listPerPage(1, false, $filters);
-        /** @var array $productModel */
-        $productModel = $productModels->getItems();
-        if (empty($productModel)) {
+        
+        foreach ($filters as $filter) {
+            /** @var PageInterface $productModels */
+            $productModels = $this->akeneoClient->getProductModelApi()->listPerPage(1, false, $filter);
+            /** @var array $productModel */
+            $productModels = $productModels->getItems();
+
+            if (!empty($productModels)) {
+                break;
+            }
+        }
+
+        if (empty($productModels)) {
             $this->setMessage(__('No results from Akeneo'));
             $this->stop(1);
 
             return;
         }
-        $productModel = reset($productModel);
+
+        $productModel = reset($productModels);
         $this->entitiesHelper->createTmpTableFromApi($productModel, $this->getCode());
     }
 
@@ -144,7 +152,9 @@ class ProductModel extends Import
         /** @var mixed[] $filters */
         $filters = $this->getFilters();
         /** @var string|int $paginationSize */
-        $paginationSize = $this->configHelper->getPanigationSize();
+        $paginationSize = $this->configHelper->getPaginationSize();
+        /** @var int $index */
+        $index = 0;
         /** @var string[] $attributeMetrics */
         $attributeMetrics = $this->attributeMetrics->getMetricsAttributes();
         /** @var mixed[] $metricsConcatSettings */
@@ -161,7 +171,7 @@ class ProductModel extends Import
              * @var int   $index
              * @var array $productModel
              */
-            foreach ($productModels as $index => $productModel) {
+            foreach ($productModels as $productModel) {
                 foreach ($attributeMetrics as $attributeMetric) {
                     if (!isset($productModel['values'][$attributeMetric])) {
                         continue;
@@ -203,11 +213,22 @@ class ProductModel extends Import
                         $productModel['values'][$metricsConcatSetting][$key]['data']['amount'] .= ' ' . $metricSymbols[$unit];
                     }
                 }
-
+                // Set identifier to work with data insertion
+                if (isset($productModel['code'])) {
+                    $productModel['identifier'] = $productModel['code'];
+                }
                 $this->entitiesHelper->insertDataFromApi($productModel, $this->getCode());
+                $index++;
             }
-            $index++;
         }
+
+        if (empty($index)) {
+            $this->setMessage('No Product data to insert in temp table');
+            $this->stop(true);
+
+            return;
+        }
+
         $this->setMessage(
             __('%1 line(s) found', $index)
         );
@@ -220,8 +241,10 @@ class ProductModel extends Import
      */
     public function getMetricsSymbols()
     {
+        /** @var string|int $paginationSize */
+        $paginationSize = $this->configHelper->getPaginationSize();
         /** @var mixed[] $measures */
-        $measures = $this->akeneoClient->getMeasureFamilyApi()->all();
+        $measures = $this->akeneoClient->getMeasureFamilyApi()->all($paginationSize);
         /** @var string[] $metricsSymbols */
         $metricsSymbols = [];
         /** @var mixed[] $measure */

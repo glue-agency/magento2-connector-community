@@ -103,3 +103,37 @@
 * Fix product default status behavior conflict with Magento 2 Enterprise content staging feature
 * Optimize category association deletion request during product import
 * Skip product URL rewrite generation for non associated websites
+
+### Version 100.4.8 :
+* Fix strict type for Akeneo PHP client pagination variable
+* Fix product count during product model job
+* Optimize product association deletion request
+
+### Version 100.4.9 :
+* Fix product filters not being reseted after each family during command line execution
+* Fix create table function causing some products and product models not being imported in multi-website environment
+* Fix misleading warning label during image import
+* Fix Akeneo API connection being initialized in construct on the admin configuration page of the connector
+
+### Version 100.4.10 :
+* Add configuration check for empty mapping
+* Fix category url_path generation
+* Fix category and family source model return when API credentials are not configured
+* Fix advanced filter issue with family filter variable
+
+### Version 100.4.11 :
+* Fix website mapping attribute code comparison to lowercase
+* Fix configurable mapping attribute code comparison to lowercase
+
+### Version 100.4.12 :
+* Add credentials check before command line import jobs
+* Add pagination to API calls in the admin configuration page
+* Add security to prevent import of attributes starting with numbers (https://help.akeneo.com/magento2-connector/v100/articles/what-data.html#attributes)
+* Add column filtering for job status in the admin connector log grid
+* Fix custom options deletion after each product import
+
+### Version 100.4.13 :
+* Fix command constructor inverted comments causing compilation issue
+
+### Version 100.4.14 :
+* Fix product model temporary table data insertion when using multiple channels

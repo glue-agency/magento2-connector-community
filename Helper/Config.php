@@ -234,6 +234,21 @@ class Config
     }
 
     /**
+     * Check if all API credentials are correctly set
+     *
+     * @return bool
+     */
+    public function checkAkeneoApiCredentials()
+    {
+        if (!$this->getAkeneoApiBaseUrl() || !$this->getAkeneoApiClientId() || !$this->getAkeneoApiClientSecret(
+            ) || !$this->getAkeneoApiPassword() || !$this->getAkeneoApiUsername()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Retrieve the filter mode used
      *
      * @return string
@@ -528,10 +543,10 @@ class Config
      *
      * @return string|int
      */
-    public function getPanigationSize()
+    public function getPaginationSize()
     {
         /** @var string|int $paginationSize */
-        $paginationSize = $this->scopeConfig->getValue(self::AKENEO_API_PAGINATION_SIZE);
+        $paginationSize = (int)$this->scopeConfig->getValue(self::AKENEO_API_PAGINATION_SIZE);
         if (!$paginationSize) {
             $paginationSize = self::PAGINATION_SIZE_DEFAULT_VALUE;
         }
@@ -730,7 +745,7 @@ class Config
         }
 
         foreach ($attributes as $attribute) {
-            if (!isset($attribute['file_attribute'])) {
+            if (!isset($attribute['file_attribute']) || $attribute['file_attribute'] === '') {
                 continue;
             }
             $fileAttributes[] = $attribute['file_attribute'];
@@ -761,7 +776,7 @@ class Config
         }
 
         foreach ($media as $image) {
-            if (!isset($image['attribute'])) {
+            if (!isset($image['attribute']) || $image['attribute'] === '') {
                 continue;
             }
             $images[] = $image['attribute'];

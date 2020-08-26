@@ -109,8 +109,10 @@ class FamilyVariant extends Import
      */
     public function createTable()
     {
+        /** @var string|int $paginationSize */
+        $paginationSize = $this->configHelper->getPaginationSize();
         /** @var PageInterface $families */
-        $families = $this->akeneoClient->getFamilyApi()->all();
+        $families = $this->akeneoClient->getFamilyApi()->all($paginationSize);
         /** @var bool $hasVariant */
         $hasVariant = false;
         /** @var array $family */
@@ -149,7 +151,7 @@ class FamilyVariant extends Import
     public function insertData()
     {
         /** @var string|int $paginationSize */
-        $paginationSize = $this->configHelper->getPanigationSize();
+        $paginationSize = $this->configHelper->getPaginationSize();
         /** @var PageInterface $families */
         $families = $this->akeneoClient->getFamilyApi()->all($paginationSize);
         /** @var int $count */

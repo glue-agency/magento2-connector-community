@@ -3100,6 +3100,9 @@ class Product extends JobImport
         if(count($warnMsgs) > 0){
             $this->setMessage(__('Warning: %1 attribute does not exist', implode(',',$warnMsgs)));
         }
+        if(count($warnMsgs) > 0){
+            $this->setMessage(__('Warning: %1 attribute does not exist', implode(',',$warnMsgs)));
+        }
 
         /** @var bool $rowIdExists */
         $rowIdExists = $this->entitiesHelper->rowIdColumnExists($table);
